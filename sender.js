@@ -9,8 +9,8 @@ const provider = new ethers.providers.JsonRpcProvider('https://goerli-rollup.arb
 const wallet = new ethers.Wallet(process.env.PK, provider)
 
 //erc20 usdc goerli arb contract
-const abi = JSON.parse(fs.readFileSync('abi.json'))
 const contractAddress = "0x8fb1e3fc51f3b789ded7557e680551d93ea9d892"
+const abi = JSON.parse(fs.readFileSync(contractAddress+'.json'))
 const contract = new ethers.Contract(contractAddress, abi, provider) 
 
 // where to send those transactions 
