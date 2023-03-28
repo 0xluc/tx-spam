@@ -4,7 +4,7 @@ const fs = require('fs')
 const prompt = require("prompt-sync")({ sigint: true });
 
 let provider = new ethers.providers.JsonRpcProvider('https://goerli-rollup.arbitrum.io/rpc')
-let wallet = new ethers.Wallet(process.env.PK2, provider)
+let wallet = new ethers.Wallet(process.env.PK, provider)
 let contractAddress = "0x8fb1e3fc51f3b789ded7557e680551d93ea9d892"
 let abi = JSON.parse(fs.readFileSync(contractAddress+'.json'))
 let amount = '0.1'
