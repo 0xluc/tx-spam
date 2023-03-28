@@ -15,6 +15,7 @@ let contract = new ethers.Contract(contractAddress, abi, provider)
 let convertedAmount = ethers.utils.parseUnits(amount, numberOfZeros)
 
 async function spamErc20 (){
+    try {
     let toAddress = prompt('Address to send the tokens: ')
     const transferData = contract.interface.encodeFunctionData('transfer', [toAddress, convertedAmount])
     const maxNumberOfTxs = Math.floor(await checkBalance(wallet.address)/Number(amount))
@@ -37,11 +38,15 @@ async function spamErc20 (){
             gasPrice: ethers.utils.parseUnits('10', 'gwei')
         }))
     )
-    const txHashes = await Promise.all(
-        signedTxs.map(signedTx => provider.sendTransaction(signedTx))
-    )
-    console.log(txHashes)
-    showMenu()
+        const txHashes = await Promise.all(
+            signedTxs.map(signedTx => provider.sendTransaction(signedTx))
+        )
+        console.log(txHashes)
+        showMenu()
+    } catch (error) {
+        console.log(error)
+        showMenu()
+    }
 }
 async function checkBalance(address){
     const balance = await contract.balanceOf(address)
@@ -55,14 +60,17 @@ function changeSettings(){
         '1': changeProvider,
         '2': changeWallet,
         '3': changeContract,
-        '4': backToMainMenu
+        '4': changeAmount,
+        '5': backToMainMenu
     }
+    showSubMenu()
 
     function showSubMenu(){
         console.log("[1] Change Provider")
         console.log("[2] Change Wallet")
         console.log("[3] Change Contract")
-        console.log("[4] Go back")
+        console.log('[4] Change Amount per tx')
+        console.log("[5] Go back")
         let option = prompt('Select an option: ')
         
         if (subMenu.hasOwnProperty(option)) {
@@ -85,6 +93,11 @@ function changeSettings(){
     function changeWallet(){
         showSubMenu()
     }
+    function changeAmount(){
+        amount = prompt('New amount: ')
+        convertedAmount = ethers.utils.parseUnits(amount, numberOfZeros)
+        showSubMenu()
+    }
     function backToMainMenu(){
         showMenu()
     }
@@ -101,8 +114,8 @@ const menu = {
 }
 async function showMenu(){
     console.log('Settings:')
-    console.log('Rpc provider: ' + provider)
-    console.log('Wallet: '+ provider)
+    console.log('Rpc provider: ' + provider.connection.url)
+    console.log('Wallet: '+ wallet.address)
     console.log('Contract wallet: '+ contractAddress)
     console.log('Amount per tx: '+ amount)
     console.log('Number of zeros of the erc20 token: '+ numberOfZeros)
@@ -122,8 +135,6 @@ async function showMenu(){
     }
 }
 
-showMenu().then(() =>{
-    console.log("finished")
-}).catch(err => {
+showMenu().catch(err => {
     console.log(err)
 })
