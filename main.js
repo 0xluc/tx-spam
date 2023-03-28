@@ -6,49 +6,52 @@ const prompt = require("prompt-sync")({ sigint: true });
 let provider = new ethers.providers.JsonRpcProvider('https://goerli-rollup.arbitrum.io/rpc')
 let wallet = new ethers.Wallet(process.env.PK, provider)
 let contractAddress = "0x8fb1e3fc51f3b789ded7557e680551d93ea9d892"
-let abi = JSON.parse(fs.readFileSync(contractAddress+'.json'))
 let amount = '0.1'
 let numberOfZeros = 6
 
 
-let contract = new ethers.Contract(contractAddress, abi, provider)
-let convertedAmount = ethers.utils.parseUnits(amount, numberOfZeros)
 
 async function spamErc20 (){
     try {
-    let toAddress = prompt('Address to send the tokens: ')
-    const transferData = contract.interface.encodeFunctionData('transfer', [toAddress, convertedAmount])
-    const maxNumberOfTxs = Math.floor(await checkBalance(wallet.address)/Number(amount))
-    let numberOfTxs = Number(prompt(`Number of transactions to send(Maximum is ${maxNumberOfTxs}): `) )
-    while (numberOfTxs> maxNumberOfTxs){
-        console.log('You cannot send more tokens than you have in your wallet')
-        numberOfTxs = prompt(`Number of transactions to send(Maximum is ${maxNumberOfTxs}): `) 
-    }
-    const txs = Array(numberOfTxs).fill().map(_ => ({
-        to:contractAddress,
-        value: 0,
-        data: transferData
-    }))
-    const nonce = await provider.getTransactionCount(wallet.address)
-    const signedTxs = await Promise.all(
-        txs.map((tx, index) => wallet.signTransaction({
-            ...tx,
-            nonce: nonce+index,
-            gasLimit: 6000000,
-            gasPrice: ethers.utils.parseUnits('10', 'gwei')
+        let abi = JSON.parse(fs.readFileSync(contractAddress+'.json'))
+        let contract = new ethers.Contract(contractAddress, abi, provider)
+        let convertedAmount = ethers.utils.parseUnits(amount, numberOfZeros)
+        let toAddress = prompt('Address to send the tokens: ')
+
+        const transferData = contract.interface.encodeFunctionData('transfer', [toAddress, convertedAmount])
+        const maxNumberOfTxs = Math.floor(await checkBalance(wallet.address)/Number(amount))
+        let numberOfTxs = Number(prompt(`Number of transactions to send(Maximum is ${maxNumberOfTxs}): `) )
+        while (numberOfTxs> maxNumberOfTxs){
+            console.log('You cannot send more tokens than you have in your wallet')
+            numberOfTxs = prompt(`Number of transactions to send(Maximum is ${maxNumberOfTxs}): `) 
+        }
+        const txs = Array(numberOfTxs).fill().map(_ => ({
+            to:contractAddress,
+            value: 0,
+            data: transferData
         }))
-    )
-        const txHashes = await Promise.all(
-            signedTxs.map(signedTx => provider.sendTransaction(signedTx))
+        const nonce = await provider.getTransactionCount(wallet.address)
+        const signedTxs = await Promise.all(
+            txs.map((tx, index) => wallet.signTransaction({
+                ...tx,
+                nonce: nonce+index,
+                gasLimit: 6000000,
+                gasPrice: ethers.utils.parseUnits('10', 'gwei')
+            }))
         )
-        console.log(txHashes)
-        showMenu()
+            const txHashes = await Promise.all(
+                signedTxs.map(signedTx => provider.sendTransaction(signedTx))
+            )
+            console.log(txHashes)
+            showMenu()
     } catch (error) {
         console.log(error)
         showMenu()
     }
 }
 async function checkBalance(address){
+    const abi = JSON.parse(fs.readFileSync(contractAddress+'.json'))
+    const contract = new ethers.Contract(contractAddress, abi, provider)
     const balance = await contract.balanceOf(address)
     const balanceFormated = ethers.utils.formatUnits(balance,numberOfZeros)
     return balanceFormated
@@ -95,15 +98,44 @@ function changeSettings(){
     }
     function changeAmount(){
         amount = prompt('New amount: ')
-        convertedAmount = ethers.utils.parseUnits(amount, numberOfZeros)
         showSubMenu()
     }
     function backToMainMenu(){
         showMenu()
     }
 }
-function spamEther(){
-    showMenu()
+async function spamEther(){
+    try {
+        const balance = await provider.getBalance(wallet.address)
+        console.log(Number(balance))
+        const maxNumberOfTxs = Math.floor((balance/(10**18))/Number(amount))
+        let numberOfTxs = Number(prompt(`Number of transactions to send(Maximum is ${maxNumberOfTxs}): `) )
+        let toAddress = prompt('Address to send the tokens: ')
+        while (numberOfTxs> maxNumberOfTxs){
+            console.log('You cannot send more tokens than you have in your wallet')
+            numberOfTxs = prompt(`Number of transactions to send(Maximum is ${maxNumberOfTxs}): `) 
+        }
+        const nonce = await provider.getTransactionCount(wallet.address)
+        const txs = Array(numberOfTxs).fill().map(index => ({
+            to: toAddress,
+            value: ethers.utils.parseEther(amount),
+        }))
+        const txsHashes = await Promise.all(
+            txs.map((tx,index) => (
+                wallet.sendTransaction({
+                    ...tx,
+                    nonce:nonce+index
+                }).then((txObj) => {
+                    console.log('txHash: ', txObj.hash)
+                }
+                )
+            )) 
+        )
+        showMenu()
+    } catch (error) {
+        console.log(error)
+        showMenu()
+    }
 }
 
 const menu = {
